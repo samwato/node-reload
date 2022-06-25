@@ -1,0 +1,27 @@
+version: "3.9"
+
+volumes:
+  public:
+
+services:
+  server:
+    build:
+      context: node-reload
+      target: production
+    environment:
+      - PORT
+      - PUBLIC_DIR
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - public:/app/public # node-reload reads from shared public volume
+      - ./node-reload/server.js:/app/server.js
+
+  ui:
+    build:
+      context: ui
+      target: development
+    tty: true
+    volumes:
+      - public:/app/public # ui builder outputs build to shared public volume
+      - ./ui/src:/app/src
