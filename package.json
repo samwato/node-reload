@@ -9,5 +9,9 @@
   },
   "scripts": {
     "serve": "node server.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "ws": "^8.8.0"
   }
 }

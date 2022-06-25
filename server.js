@@ -1,6 +1,8 @@
 const fs = require('fs')
 const { createServer } = require('http')
+const chokidar = require('chokidar')
 const path = require('path')
+const { WebSocketServer } = require('ws')
 
 const PORT = process.env.PORT
 const PUBLIC_DIR = process.env.PUBLIC_DIR
@@ -62,4 +64,39 @@ server.on('listening', () => {
   console.log(`Running dev_server on ${PORT}`)
 })
 
+
+// watching for file changes is only necessary to trigger the websocket refresh
+const watcher = chokidar.watch(PUBLIC_DIR)
+
+// upgrade to websocket
+const wss = new WebSocketServer({ noServer: true })
+
+wss.on('connection', (socket) => {
+  watcher.on('all', () => {
+    socket.send('refresh')
+  })
+})
+
+// listen to http upgrade from client
+server.on('upgrade', (req, socket, head) => {
+  if (req.url === '/ws') {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req) // forward the event
+    })
+  }
+})
+
+// Client side websocket code example
+// if (NODE_ENV === 'development') { // Make sure in development mode
+//   const ws = new WebSocket(`ws://localhost:${PORT}/ws`)
+//   ws.onmessage = ({ data }) => {
+//     if (data === 'refresh') {
+//       ws.close()
+//       window.location.reload()
+//     }
+//   }
+// }
+
 server.listen(PORT)
+
+
