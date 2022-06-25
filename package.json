@@ -1,0 +1,13 @@
+{
+  "name": "node-reload",
+  "author": "https://github.com/samwato",
+  "description": "Node development server",
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "node": "^16"
+  },
+  "scripts": {
+    "serve": "node server.js"
+  }
+}
