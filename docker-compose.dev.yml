@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  server:
+    container_name: node-reload
+    build:
+      context: .
+      target: development
+    environment:
+      - PORT
+      - PUBLIC_DIR
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - ./examples/dev_public_dir:/app/public
+      - ./server.js:/app/server.js

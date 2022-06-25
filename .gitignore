@@ -2,7 +2,7 @@
 node_modules
 
 # Environment variables
-docker/.env
+.env
 
 # Misc
 .DS_Store
