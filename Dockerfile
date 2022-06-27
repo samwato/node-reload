@@ -20,7 +20,8 @@ FROM base AS production
 
 COPY package*.json ./
 
-COPY server.js /app/server.js
+COPY app.js /app/app.js
+COPY index.js /app/index.js
 
 ENV NODE_ENV=production
 

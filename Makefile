@@ -6,6 +6,7 @@ endif
 
 # Init repo
 init:
+	npm i
 	cp -n .env.example .env
 
 
@@ -16,3 +17,6 @@ up:
 
 down:
 	docker-compose --file docker-compose.dev.yml down --remove-orphans
+
+test:
+	npm run test

@@ -13,4 +13,5 @@ services:
       - "${PORT}:${PORT}"
     volumes:
       - ./examples/dev_public_dir:/app/public
-      - ./server.js:/app/server.js
+      - ./app.js:/app/app.js
+      - ./index.js:/app/index.js

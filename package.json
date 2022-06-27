@@ -8,10 +8,15 @@
     "node": "^16"
   },
   "scripts": {
-    "serve": "node server.js"
+    "serve": "node .",
+    "test": "./node_modules/.bin/jest --detectOpenHandles --forceExit"
   },
   "dependencies": {
     "chokidar": "^3.5.3",
     "ws": "^8.8.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^8.14.0",
+    "jest": "^28.1.1"
   }
 }
