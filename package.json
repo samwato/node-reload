@@ -9,7 +9,7 @@
   },
   "scripts": {
     "serve": "node .",
-    "test": "./node_modules/.bin/jest --detectOpenHandles --forceExit"
+    "test": "./node_modules/.bin/jest --detectOpenHandles --forceExit --watch"
   },
   "dependencies": {
     "chokidar": "^3.5.3",

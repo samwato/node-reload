@@ -1,92 +1,134 @@
 const fs = require('fs')
-const { createServer } = require('http')
+const http2 = require('http2')
 const chokidar = require('chokidar')
 const path = require('path')
-const { WebSocketServer } = require('ws')
 
-function app(public_dir = 'public') {
+const {
+  HTTP2_HEADER_METHOD,
+  HTTP2_HEADER_PATH,
+  HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_CONTENT_TYPE,
+  HTTP_STATUS_ACCEPTED,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+} = http2.constants
 
-  // Create an HTTP server
-  const server = createServer((req, res) => {
+function app(publicDir = 'public', keyFile, certFile) {
 
-    // Use request url to match filepath
-    let filePath = path.join(
-      public_dir,
-      req.url,
-    )
+  // Create an HTTP/2 server
+  const server = http2.createSecureServer({
+    key: fs.readFileSync(`certs/${keyFile}`),
+    cert: fs.readFileSync(`certs/${certFile}`),
+  });
 
-    // fix root path to index.html
-    if (req.url === '/') {
-      filePath = path.join(filePath, 'index.html')
-    }
+  // Deal with server errors
+  server.on('error', (err) => {
+    console.error(err)
+  });
 
-    // Match content type
-    const mimeTypes = {
-      '.html': 'text/html',
-      '.js': 'text/javascript',
-      '.css': 'text/css',
-      '.json': 'application/json',
-      '.png': 'image/png',
-      '.jpg': 'image/jpg',
-      '.gif': 'image/gif',
-      '.svg': 'image/svg+xml',
-      '.wav': 'audio/wav',
-      '.mp4': 'video/mp4',
-      '.woff': 'application/font-woff',
-      '.ttf': 'application/font-ttf',
-      '.eot': 'application/vnd.ms-fontobject',
-      '.otf': 'application/font-otf',
-      '.wasm': 'application/wasm',
-    }
-    const extname = path.extname(filePath).toLowerCase()
-    const contentType = mimeTypes[extname] || 'application/octet-stream'
+  server.on('connection', () => {
+    console.log('Server has connection...')
+  })
 
-    // Serve file
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        // respond with appropriate error
-        if (err.code === 'ENOENT') {
-          res.writeHead(404)
-          res.end('Not found')
-        } else {
-          res.writeHead(500)
-          res.end(`Oops, something went wrong: ${err.code}`)
-        }
-      } else {
-        // respond with file
-        res.writeHead(200, {
-          'Content-Type': contentType,
-        })
-        res.end(content, 'utf-8')
+  server.on('session', (session) => {
+    session.settings({
+      enablePush: true,
+    })
+  })
+
+  // watching for file changes is only necessary to trigger a browser refresh
+  const watcher = chokidar.watch(publicDir)
+
+  watcher.on('ready', () => {
+    console.log('watcher ready')
+
+    // Handle requests
+    server.on('stream', (stream, headers) => {
+      const reqMethod = headers[HTTP2_HEADER_METHOD]
+      const reqPath = headers[HTTP2_HEADER_PATH]
+
+      // Use request path to match file path
+      let filePath = path.join(
+        publicDir,
+        reqPath, // TODO
+      )
+
+      // fix root path to index.html
+      if (reqPath === '/') {
+        filePath = path.join(filePath, 'index.html')
       }
-    })
-  })
 
-  server.on('listening', () => {
-    console.log('Running node-reload.')
-  })
+      // Match content type
+      const mimeTypes = {
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.wav': 'audio/wav',
+        '.mp4': 'video/mp4',
+        '.woff': 'application/font-woff',
+        '.ttf': 'application/font-ttf',
+        '.eot': 'application/vnd.ms-fontobject',
+        '.otf': 'application/font-otf',
+        '.wasm': 'application/wasm',
+      }
+      const extname = path.extname(filePath).toLowerCase()
+      const contentType = mimeTypes[extname] || 'application/octet-stream'
 
+      stream.respondWithFile(filePath,
+        {[HTTP2_HEADER_CONTENT_TYPE]: `${contentType}; charset=utf-8`},
+        {
+          statCheck(stats, headers) {
+            headers['last-modified'] = stats.mtime.toUTCString()
+          },
+          onError(err) {
+            try {
+              if (err.code === 'ENOENT') {
+                stream.respond({
+                  [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+                })
+              } else {
+                stream.respond({
+                  [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+                })
+              }
+            } catch (err) {
+              console.log(err)
+            }
+            // end stream
+            stream.end()
+          }
+        })
 
-// watching for file changes is only necessary to trigger the websocket refresh
-  const watcher = chokidar.watch(public_dir)
-
-// upgrade to websocket
-  const wss = new WebSocketServer({ noServer: true })
-
-  wss.on('connection', (socket) => {
-    watcher.on('all', () => {
-      socket.send('refresh')
-    })
-  })
-
-// listen to http upgrade from client
-  server.on('upgrade', (req, socket, head) => {
-    if (req.url === '/ws') {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req) // forward the event
+      watcher.on('all', (eventName, path) => {
+        if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
+          console.log(`Watcher event: ${eventName} on ${path} triggered a refresh`)
+          stream.pushStream({ [HTTP2_HEADER_PATH]: '/' }, (err, pushStream) => {
+            if (err) throw err
+            pushStream.respond({
+              [HTTP2_HEADER_STATUS]: HTTP_STATUS_ACCEPTED,
+            })
+            pushStream.end('refresh')
+          })
+        } else {
+          console.log(`Watcher event: ${eventName} on ${path} but no refresh`)
+        }
       })
-    }
+
+    })
   })
+
+
+
+
+
+
+
 
 // Client side websocket code example
 // if (NODE_ENV === 'development') { // Make sure in development mode

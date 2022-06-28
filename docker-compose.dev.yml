@@ -9,9 +9,12 @@ services:
     environment:
       - PORT
       - PUBLIC_DIR
+      - KEY_FILE
+      - CERT_FILE
     ports:
       - "${PORT}:${PORT}"
     volumes:
       - ./examples/dev_public_dir:/app/public
       - ./app.js:/app/app.js
       - ./index.js:/app/index.js
+      - ./certs:/app/certs

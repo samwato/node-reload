@@ -22,6 +22,7 @@ COPY package*.json ./
 
 COPY app.js /app/app.js
 COPY index.js /app/index.js
+COPY certs /app/certs
 
 ENV NODE_ENV=production
 
