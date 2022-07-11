@@ -21,6 +21,7 @@ FROM base AS production
 COPY package*.json ./
 
 COPY server.js /app/server.js
+COPY certs /app/certs
 
 ENV NODE_ENV=production
 
