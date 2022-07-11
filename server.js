@@ -1,6 +1,6 @@
-const fs = require('fs')
-const { createServer } = require('http')
-const path = require('path')
+import fs from 'fs'
+import { createServer } from 'http'
+import path from 'path'
 
 const PORT = process.env.PORT
 const PUBLIC_DIR = process.env.PUBLIC_DIR
