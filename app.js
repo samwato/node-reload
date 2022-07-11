@@ -17,24 +17,29 @@ function app(publicDir = 'public', keyFile, certFile) {
 
   // Create an HTTP/2 server
   const server = http2.createSecureServer({
-    key: fs.readFileSync(`certs/${keyFile}`),
-    cert: fs.readFileSync(`certs/${certFile}`),
+    key: fs.readFileSync(keyFile),
+    cert: fs.readFileSync(certFile),
   });
 
   // Deal with server errors
   server.on('error', (err) => {
-    console.error(err)
-  });
+    console.error(err.message)
+  })
 
   server.on('connection', () => {
-    console.log('Server has connection...')
+    console.log('Server has connection ...')
   })
 
   server.on('session', (session) => {
     session.settings({
       enablePush: true,
     })
+
+    session.on('close', () => {
+      console.log('session closed')
+    })
   })
+
 
   // watching for file changes is only necessary to trigger a browser refresh
   const watcher = chokidar.watch(publicDir)
@@ -80,6 +85,14 @@ function app(publicDir = 'public', keyFile, certFile) {
       const extname = path.extname(filePath).toLowerCase()
       const contentType = mimeTypes[extname] || 'application/octet-stream'
 
+      stream.on('error', (err) => {
+        console.log(err.message)
+      })
+
+      stream.on('end', () => {
+        console.log('stream has ended')
+      })
+
       stream.respondWithFile(filePath,
         {[HTTP2_HEADER_CONTENT_TYPE]: `${contentType}; charset=utf-8`},
         {
@@ -100,25 +113,33 @@ function app(publicDir = 'public', keyFile, certFile) {
             } catch (err) {
               console.log(err)
             }
-            // end stream
-            stream.end()
           }
         })
 
-      watcher.on('all', (eventName, path) => {
-        if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
-          console.log(`Watcher event: ${eventName} on ${path} triggered a refresh`)
-          stream.pushStream({ [HTTP2_HEADER_PATH]: '/' }, (err, pushStream) => {
-            if (err) throw err
-            pushStream.respond({
-              [HTTP2_HEADER_STATUS]: HTTP_STATUS_ACCEPTED,
+      if (!stream.pushAllowed) {
+        console.log('HTTP/2 client does not allow for push streams')
+      } else {
+        console.log('HTTP/2 client allows push streams')
+        watcher.on('all', (eventName, path) => {
+          if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
+            console.log(`Watcher event: ${eventName} on ${path}`)
+            stream.pushStream({ [HTTP2_HEADER_PATH]: '/refresh' }, (err, pushStream) => {
+              if (err) {
+                console.log(err.message)
+              }
+              pushStream.on('error', (err) => {
+                console.log(err.message)
+              })
+              pushStream.respond({
+                [HTTP2_HEADER_STATUS]: HTTP_STATUS_ACCEPTED,
+              })
+              pushStream.end('refresh')
             })
-            pushStream.end('refresh')
-          })
-        } else {
-          console.log(`Watcher event: ${eventName} on ${path} but no refresh`)
-        }
-      })
+          } else {
+            console.log(`Watcher event: ${eventName} on ${path} but no refresh`)
+          }
+        })
+      }
 
     })
   })

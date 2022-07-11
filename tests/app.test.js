@@ -10,17 +10,17 @@ const {
   HTTP2_HEADER_CONTENT_TYPE,
 } = http2.constants
 
-const TEST_PORT = 8443
-const TEST_URL = `https://localhost:${TEST_PORT}`
-const PUBLIC_DIR = path.resolve(__dirname, '../examples/dev_public_dir')
-const KEY_FILE = path.resolve(__dirname, '../certs/localhost-key.pem')
-const CERT_FILE = path.resolve(__dirname, '../certs/localhost-cert.pem')
+const testPort = 8443
+const testUrl = `https://localhost:${testPort}`
+const publicDir = path.resolve(__dirname, '../examples/dev_public_dir')
+const keyFile = path.resolve(__dirname, '../certs/localhost-key.pem')
+const certFile = path.resolve(__dirname, '../certs/localhost-cert.pem')
 
-const server = app(PUBLIC_DIR, KEY_FILE, CERT_FILE)
+const server = app(publicDir, keyFile, certFile)
 
 describe('Server', () => {
   beforeAll(() => {
-    server.listen(TEST_PORT)
+    server.listen(testPort)
   })
 
   afterAll(() => {
@@ -28,20 +28,24 @@ describe('Server', () => {
   })
 
   test('base route return index.html file', (done) => {
-    const client = http2.connect(TEST_URL, {
-      ca: fs.readFileSync(CERT_FILE)
+    const client = http2.connect(testUrl, {
+      ca: fs.readFileSync(certFile)
     })
 
-    client.request({ [HTTP2_HEADER_PATH]: '/' })
-      .on('response', (headers) => {
-        expect(headers[HTTP2_HEADER_STATUS]).toBe(HTTP_STATUS_ACCEPTED)
-        expect(headers[HTTP2_HEADER_CONTENT_TYPE]).toBe('text/html')
-      })
-      .on('end', () => {
-        client.close()
-        done()
-      })
-      .end()
+    const request = client.request({ [HTTP2_HEADER_PATH]: '/' })
+
+    request.on('response', (headers) => {
+      console.log(headers)
+      // expect(headers[HTTP2_HEADER_STATUS]).toBe(HTTP_STATUS_ACCEPTED)
+      // expect(headers[HTTP2_HEADER_CONTENT_TYPE]).toBe('text/html')
+    })
+
+    // request.on('end', () => {
+    //   client.close()
+    //   done()
+    // })
+    //
+    // request.end()
   })
 
   // test('unknown file path returns 404', (done) => {

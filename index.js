@@ -1,9 +1,10 @@
 const app = require('./app')
 
-const PORT = process.env.PORT
-const PUBLIC_DIR = process.env.PUBLIC_DIR || 'public'
-const KEY_FILE = process.env.KEY_FILE
-const CERT_FILE = process.env.CERT_FILE
+const port = process.env.PORT
+const publicDir = process.env.PUBLIC_DIR || 'public'
+const keyFile = `certs/${process.env.KEY_FILE}`
+const certFile = `certs/${process.env.CERT_FILE}`
 
-const server = app(PUBLIC_DIR, KEY_FILE, CERT_FILE)
-server.listen(PORT)
+const server = app(publicDir, keyFile, certFile)
+
+server.listen(port)
