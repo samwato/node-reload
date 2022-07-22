@@ -15,5 +15,7 @@ services:
       - "${PORT}:${PORT}"
     volumes:
       - ./examples/dev_public_dir:/app/public
-      - ./server.js:/app/server.js
       - ./certs:/app/certs
+      - ./scripts:/app/scripts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./src:/app/src

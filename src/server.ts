@@ -2,8 +2,8 @@ import fs from 'fs'
 import { createServer } from 'http'
 import path from 'path'
 
-const PORT = process.env.PORT
-const PUBLIC_DIR = process.env.PUBLIC_DIR
+const PORT = process.env['PORT']
+const PUBLIC_DIR = process.env['PUBLIC_DIR']
 
 // Create an HTTP server
 const server = createServer((req, res) => {
@@ -35,6 +35,7 @@ const server = createServer((req, res) => {
     '.wasm': 'application/wasm',
   }
   const extname = path.extname(filePath).toLowerCase()
+  // @ts-ignore
   const contentType = mimeTypes[extname] || 'application/octet-stream'
 
   // Serve file
